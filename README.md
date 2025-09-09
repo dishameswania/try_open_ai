@@ -10,4 +10,4 @@ To run your application, you'll need to:
 
 3. Run your application:
 
-   python open_ai.py
+   python open_ai.py 
