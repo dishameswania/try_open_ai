@@ -6,8 +6,8 @@ To run your application, you'll need to:
 
 2. Install the updated dependencies:
 
-   pip install -r requirements.txt
+   pip3 install -r requirements.txt
 
 3. Run your application:
 
-   python open_ai.py 
+   python3 open_ai.py 
