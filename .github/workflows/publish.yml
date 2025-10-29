@@ -1,0 +1,89 @@
+name: Publish to Fly
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 0.1.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Setup JFrog Fly
+      uses: jfrog/fly-action@v1
+      with:
+        url: https://supportfly.jfrog.io
+    
+    - name: Install build tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    
+    - name: Build package
+      run: |
+        python -m build
+    
+    - name: Configure version if provided
+      if: github.event.inputs.version != ''
+      run: |
+        sed -i "s/version=\".*\"/version=\"${{ github.event.inputs.version }}\"/" setup.py
+    
+    - name: Configure version from tag
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        sed -i "s/version=\".*\"/version=\"$VERSION\"/" setup.py
+    
+    - name: Rebuild package with version
+      if: github.event.inputs.version != '' || startsWith(github.ref, 'refs/tags/v')
+      run: |
+        python -m build
+    
+    - name: Install JFrog CLI
+      run: |
+        curl -fL https://install-cli.jfrog.io | sh
+        sudo mv jf /usr/local/bin/
+    
+    - name: Publish to JFrog Fly
+      env:
+        JFROG_CLI_OFFER_CONFIG: false
+      run: |
+        # JFrog Fly authentication is already configured by jfrog/fly-action via OIDC
+        # Upload Python packages to JFrog Artifactory
+        FLY_URL="https://supportfly.jfrog.io"
+        
+        # Upload packages to python-local repository
+        # The fly-action has already authenticated via OIDC
+        jfrog rt upload \
+          --url="$FLY_URL" \
+          --repo="python-local" \
+          "dist/*" \
+          "python-local/"
+        
+        echo "✅ Packages published to JFrog Fly successfully!"
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package
+        path: dist/*
+
