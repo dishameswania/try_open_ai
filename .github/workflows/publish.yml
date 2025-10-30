@@ -73,7 +73,6 @@ jobs:
         # The fly-action has already authenticated via OIDC
         jfrog rt upload \
           --url="$FLY_URL" \
-          --repo="python-local" \
           "dist/*" \
           "python-local/"
         
